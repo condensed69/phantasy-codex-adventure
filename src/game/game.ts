@@ -619,10 +619,10 @@ export class PhantasyGame {
       ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
       ctx.textAlign = "center";
       ctx.fillStyle = "#fff3c4";
-      ctx.font = "900 36px Nunito, sans-serif";
+      ctx.font = "900 36px Trebuchet MS, sans-serif";
       ctx.fillText("Chapter paused", this.canvas.width / 2, this.canvas.height / 2 - 8);
       ctx.fillStyle = "#9cabc4";
-      ctx.font = "500 15px DM Mono, monospace";
+      ctx.font = "500 15px Cascadia Mono, monospace";
       ctx.fillText("Press P or Esc to wander on", this.canvas.width / 2, this.canvas.height / 2 + 25);
     }
     if (this.flash > 0) {
@@ -870,7 +870,7 @@ export class PhantasyGame {
     ctx.save();
     ctx.globalAlpha = clamp(text.life / text.maxLife, 0, 1);
     ctx.textAlign = "center";
-    ctx.font = `900 ${Math.round(14 * text.scale)}px Nunito, sans-serif`;
+    ctx.font = `900 ${Math.round(14 * text.scale)}px Trebuchet MS, sans-serif`;
     ctx.lineWidth = 4;
     ctx.strokeStyle = "rgba(17,24,43,.75)";
     ctx.strokeText(text.text, text.position.x, text.position.y);
