@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "dev:worker": "wrangler dev",
-    "build": "tsc --noEmit && vite build",
+    "build": "wrangler types worker-configuration.d.ts && tsc --noEmit && vite build",
     "test": "vitest run",
     "test:watch": "vitest",
     "check": "npm run test && npm run build && wrangler deploy --dry-run",
