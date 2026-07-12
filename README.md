@@ -11,22 +11,23 @@ A compact, colorful top-down action RPG built for quick keyboard-first runs. Eve
 | Action | Keys |
 | --- | --- |
 | Move | `WASD` or arrow keys |
-| Sprint | `Shift` or `Space` |
-| Attack | `J`, `Z`, or `Enter` |
+| Attack | `J`, `Z`, `Space`, or `Enter` |
+| Evade | `Shift` |
+| Signature skill | `F` |
 | Sunblade / Thornlance / Starwand | `1` / `2` / `3` |
 | Character sheet | `Tab` |
 | Pause | `P` or `Escape` |
 | Sound | `M` |
 
-The Sunblade sweeps a wide close-range arc, the Thornlance reaches farther and pierces, and the Starwand fires guided spell bolts. Passive mosslings and hornhares retaliate only when attacked; emberfoxes, boneguards, and wisps hunt automatically.
+The Sunblade sweeps a wide close-range arc, the Thornlance reaches farther and pierces, and the Starwand fires guided spell bolts. Each relic has its own signature skill and gains mastery through combat. Passive mosslings and hornhares retaliate only when attacked; emberfoxes, boneguards, and wisps hunt automatically.
 
 ## Features
 
 - Deterministic 72×72 procedural realms with water, beaches, forests, flowers, stone, ruins, and a central Codex shrine.
 - Continuously replenished passive and aggressive creature populations.
-- Health, stamina, sprinting, armor, critical hits, damage numbers, particles, healing drops, XP, and 99 levels.
-- Three upgradable relic weapons and three-choice level-up drafts with common, rare, and mythic boons.
-- Live character sheet with build stats and relic mastery.
+- Health, stamina, invulnerable evades, armor, critical hits, damage numbers, particles, healing drops, XP, and 99 levels.
+- Three upgradable relic weapons with signature skills, combat mastery, and enemy poise-breaking.
+- Three-choice level-up drafts with common, rare, and mythic boons plus a live build-and-mastery character sheet.
 - Daily seed and unlimited wild-world runs.
 - Shared D1 leaderboard. The server validates a run session and derives level from total XP before accepting the score.
 - Original generated key art plus purpose-built pixel rendering and procedural Web Audio feedback.
