@@ -1,0 +1,24 @@
+{
+  "name": "phantasy-codex-adventure",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:worker": "wrangler dev",
+    "build": "tsc --noEmit && vite build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check": "npm run test && npm run build && wrangler deploy --dry-run",
+    "cf:typegen": "wrangler types worker-configuration.d.ts",
+    "db:migrate:local": "wrangler d1 migrations apply phantasy-codex-leaderboard --local",
+    "db:migrate:remote": "wrangler d1 migrations apply phantasy-codex-leaderboard --remote",
+    "deploy": "npm run build && wrangler deploy"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "vite": "^8.1.4",
+    "vitest": "^4.1.10",
+    "wrangler": "^4.110.0"
+  }
+}

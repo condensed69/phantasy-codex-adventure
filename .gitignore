@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.wrangler/
+.dev.vars
+.env
+coverage/
+playwright-report/
+test-results/
+.playwright-cli/
+output/
+*.log
+*.cpuprofile
+worker-configuration.d.ts
+.DS_Store

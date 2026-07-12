@@ -1,0 +1,24 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "phantasy-codex-adventure",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-07-11",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "phantasy-codex-leaderboard",
+      "database_id": "9824384d-b924-4357-8398-5a272c558cb7",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  }
+}
