@@ -55,6 +55,16 @@ kbd { display: inline-grid; place-items: center; min-width: 1.6em; padding: .1em
 .region-name { padding: 7px 10px; border-radius: 8px; color: #fff3c4; font-size: 10px; letter-spacing: .08em; }
 .weapon-chip { padding: 5px 9px; border-radius: 7px; color: #b7e8d0; font-size: 9px; }
 
+.combat-dock { position: absolute; z-index: 3; right: 14px; bottom: 14px; display: flex; gap: 7px; filter: drop-shadow(0 4px 0 rgba(0,0,0,.25)); }
+.combat-action { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 7px 10px; border: 2px solid rgba(255,243,196,.56); border-radius: 9px; color: #eef8e0; background: rgba(10,20,37,.9); cursor: pointer; text-align: left; }
+.combat-action > span { display: grid; }
+.combat-action small { color: #7f94b5; font: 500 .5rem var(--font-mono); letter-spacing: .07em; text-transform: uppercase; }
+.combat-action b { color: #fff2b2; font-size: .7rem; }
+.combat-action em { color: #67dfbc; font: normal 500 .52rem var(--font-mono); }
+.combat-action.cooling { border-color: rgba(126,145,177,.4); filter: saturate(.55); }
+.combat-action.cooling em, .combat-action.cooling b { color: #8d9ab2; }
+.evade-action b { color: #77e2c0; }
+
 .screen { position: absolute; inset: 0; z-index: 4; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: clamp(22px, 5vw, 70px); text-align: center; background: radial-gradient(circle at 50% 35%, rgba(61,83,130,.45), transparent 20rem), linear-gradient(155deg, rgba(11,20,40,.92), rgba(12,40,44,.93)); backdrop-filter: blur(3px); }
 .hidden { display: none !important; }
 .screen h2 { max-width: 720px; margin: 4px 0 12px; color: #fff6d0; font-size: clamp(1.7rem, 4.3vw, 3.4rem); line-height: 1.04; letter-spacing: -.045em; }
@@ -121,8 +131,9 @@ kbd { display: inline-grid; place-items: center; min-width: 1.6em; padding: .1em
 .weapon-option.active { border-color: rgba(255,200,87,.55); background: rgba(255,200,87,.08); color: #fff3c4; }
 .weapon-glyph { width: 35px; aspect-ratio: 1; display: grid; place-items: center; border-radius: 8px; color: #172039; font-size: 1.1rem; }
 .weapon-glyph.sword { background: #ffc857; }.weapon-glyph.spear { background: #73d6a9; }.weapon-glyph.wand { background: #a78fff; }
-.weapon-option b, .weapon-option small { display: block; }
+.weapon-option b, .weapon-option small, .weapon-option em { display: block; }
 .weapon-option b { font-size: .78rem; }.weapon-option small { color: #7f91af; font-size: .61rem; }
+.weapon-option em { margin-top: 2px; color: #67cdb7; font: normal 500 .5rem var(--font-mono); }
 .panel-heading { display: flex; justify-content: space-between; align-items: start; }
 .panel-heading h2 { margin: 0; color: #fff3c4; font-size: 1rem; }
 .refresh-button { width: 29px; height: 29px; color: #9bb0d3; }
@@ -158,6 +169,7 @@ footer { display: flex; justify-content: space-between; margin-top: auto; paddin
   .start-actions span { font-size: .7rem; }.start-actions small { display: none; }
   .controls-strip { margin-top: 9px; gap: 7px; font-size: .5rem; }
   .hud { inset: 7px 7px auto; }.hud-vitals { width: 55%; padding: 4px; }.portrait { width: 27px; }.bar-row { grid-template-columns: 16px 1fr; }.bar-row b { display: none; }.region-name { font-size: 7px; padding: 4px 6px; }.weapon-chip { font-size: 7px; padding: 3px 5px; }
+  .combat-dock { right: 7px; bottom: 7px; }.combat-action { min-height: 34px; padding: 4px 6px; border-width: 1px; }.combat-action small, .combat-action em { display: none; }.combat-action b { font-size: .55rem; }
   .upgrade-cards { gap: 5px; }.upgrade-card { min-height: 120px; padding: 8px; }.upgrade-icon { width: 27px; margin-bottom: 5px; font-size: .85rem; }.upgrade-card h3 { font-size: .68rem; }.upgrade-card p { font-size: .5rem; }.rarity { display: none; }
   .side-panel { grid-template-columns: 1fr; }
   .current-card { display: none; }

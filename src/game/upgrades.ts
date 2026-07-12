@@ -55,9 +55,9 @@ const POOL: UpgradeChoice[] = [
 
 export function createWeaponStates(): Record<WeaponKind, WeaponState> {
   return {
-    sword: { kind: "sword", tier: 1, damageBonus: 0, speedBonus: 0, special: 0 },
-    spear: { kind: "spear", tier: 1, damageBonus: 0, speedBonus: 0, special: 1 },
-    wand: { kind: "wand", tier: 1, damageBonus: 0, speedBonus: 0, special: 0 },
+    sword: { kind: "sword", tier: 1, damageBonus: 0, speedBonus: 0, special: 0, masteryLevel: 1, masteryXp: 0 },
+    spear: { kind: "spear", tier: 1, damageBonus: 0, speedBonus: 0, special: 1, masteryLevel: 1, masteryXp: 0 },
+    wand: { kind: "wand", tier: 1, damageBonus: 0, speedBonus: 0, special: 0, masteryLevel: 1, masteryXp: 0 },
   };
 }
 

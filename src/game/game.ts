@@ -1,4 +1,5 @@
 import { levelProgress } from "./progression";
+import { masteryLevelFromXp, SIGNATURES, poiseForHealth } from "./combat";
 import { SeededRandom } from "./rng";
 import { CodexSound } from "./sound";
 import type {
@@ -23,6 +24,8 @@ export interface GameSnapshot {
   seed: number;
   elapsedSeconds: number;
   defeated: number;
+  abilityCooldown: number;
+  dodgeCooldown: number;
 }
 
 export interface GameOverSummary extends GameSnapshot {
@@ -45,6 +48,9 @@ interface Player {
   attackVisual: number;
   attackKind: WeaponKind;
   walkCycle: number;
+  dodgeCooldown: number;
+  dodgeTimer: number;
+  dodgeDirection: Vector;
 }
 
 const COLORS = {
@@ -119,6 +125,9 @@ export class PhantasyGame {
   private flash = 0;
   private lastReported = 0;
   private sessionId = "";
+  private abilityCooldown = 0;
+  private signatureVisual = 0;
+  private signatureKind: WeaponKind = "sword";
 
   constructor(canvas: HTMLCanvasElement, hooks: GameHooks) {
     this.canvas = canvas;
@@ -141,6 +150,9 @@ export class PhantasyGame {
       attackVisual: 0,
       attackKind: "sword",
       walkCycle: 0,
+      dodgeCooldown: 0,
+      dodgeTimer: 0,
+      dodgeDirection: { x: 0, y: 1 },
     };
   }
 
@@ -192,6 +204,8 @@ export class PhantasyGame {
     this.shake = 0;
     this.flash = 0;
     this.sessionId = sessionId;
+    this.abilityCooldown = 0;
+    this.signatureVisual = 0;
     this.mode = "playing";
     this.lastFrame = performance.now();
     this.hooks.onWeapon(this.weapon);
@@ -201,6 +215,12 @@ export class PhantasyGame {
 
   resetToIdle(): void {
     this.mode = "idle";
+  }
+
+  queueAction(action: "j" | "f" | "shift"): void {
+    if (this.mode !== "playing") return;
+    this.pressed.add(action);
+    this.canvas.focus();
   }
 
   setWeapon(kind: WeaponKind): void {
@@ -253,6 +273,8 @@ export class PhantasyGame {
       seed: this.world.seed,
       elapsedSeconds: Math.floor(this.elapsedSeconds),
       defeated: this.defeated,
+      abilityCooldown: this.abilityCooldown,
+      dodgeCooldown: this.player.dodgeCooldown,
     };
   }
 
@@ -271,11 +293,16 @@ export class PhantasyGame {
     this.player.attackCooldown = Math.max(0, this.player.attackCooldown - delta);
     this.player.hurtCooldown = Math.max(0, this.player.hurtCooldown - delta);
     this.player.attackVisual = Math.max(0, this.player.attackVisual - delta);
+    this.player.dodgeCooldown = Math.max(0, this.player.dodgeCooldown - delta);
+    this.player.dodgeTimer = Math.max(0, this.player.dodgeTimer - delta);
+    this.abilityCooldown = Math.max(0, this.abilityCooldown - delta);
+    this.signatureVisual = Math.max(0, this.signatureVisual - delta);
     this.shake = Math.max(0, this.shake - delta * 18);
     this.flash = Math.max(0, this.flash - delta * 3.5);
 
     this.updateMovement(delta);
-    if (this.pressed.has("j") || this.pressed.has("z") || this.pressed.has("enter")) this.attack();
+    if (this.pressed.has("j") || this.pressed.has("z") || this.pressed.has("enter") || this.pressed.has(" ")) this.attack();
+    if (this.pressed.has("f")) this.useSignature();
     if (this.pressed.has("p") || this.pressed.has("escape")) this.mode = "paused";
     this.updateSpawning(delta);
     this.updateCreatures(delta);
@@ -292,9 +319,28 @@ export class PhantasyGame {
       y: Number(this.keys.has("s") || this.keys.has("arrowdown")) - Number(this.keys.has("w") || this.keys.has("arrowup")),
     };
     const movement = normalize(input);
-    const sprinting = (this.keys.has("shift") || this.keys.has(" ")) && this.stats.stamina > 1 && (movement.x !== 0 || movement.y !== 0);
-    const speed = this.stats.speed * (sprinting ? 1.55 : 1);
-    if (sprinting) this.stats.stamina = Math.max(0, this.stats.stamina - delta * 20);
+    if (this.pressed.has("shift") && this.player.dodgeCooldown <= 0 && this.stats.stamina >= 16) {
+      const dodgeDirection = movement.x !== 0 || movement.y !== 0 ? movement : this.player.direction;
+      this.player.dodgeDirection = dodgeDirection;
+      this.player.direction = dodgeDirection;
+      this.player.dodgeTimer = 0.2;
+      this.player.dodgeCooldown = 0.72;
+      this.stats.stamina -= 16;
+      this.burst(this.player.position, "#8be8d4", 8, 72);
+      this.sound.tone(260, 0.12, "sine", 0.025, 300);
+    }
+
+    if (this.player.dodgeTimer > 0) {
+      this.moveWithCollision(
+        this.player.position,
+        this.player.dodgeDirection.x * this.stats.speed * 3.15 * delta,
+        this.player.dodgeDirection.y * this.stats.speed * 3.15 * delta,
+        this.player.radius,
+      );
+      if (this.rng.chance(0.55)) this.burst(this.player.position, "#80d9c0", 1, 18);
+      return;
+    }
+    const speed = this.stats.speed;
 
     if (movement.x !== 0 || movement.y !== 0) {
       this.player.direction = movement;
@@ -334,6 +380,7 @@ export class PhantasyGame {
       const castDirection = this.assistedCastDirection();
       this.projectiles.push({
         id: this.entityId++,
+        weapon: "wand",
         position: {
           x: this.player.position.x + castDirection.x * 18,
           y: this.player.position.y + castDirection.y * 18,
@@ -344,6 +391,7 @@ export class PhantasyGame {
         life: 1.15,
         color: "#bda0ff",
         pierce: weapon.tier >= 4 ? 1 : 0,
+        poiseDamage: 10 + weapon.tier * 2,
         hitIds: new Set(),
       });
       return;
@@ -360,11 +408,85 @@ export class PhantasyGame {
       const targetAngle = Math.atan2(creature.position.y - this.player.position.y, creature.position.x - this.player.position.x);
       if (targetDistance <= reach + creature.radius && Math.abs(angleDifference(targetAngle, directionAngle)) <= halfArc) {
         const falloff = this.weapon === "spear" && targetDistance > reach * 0.7 ? 1.25 : 1;
-        this.damageCreature(creature, Math.round((data.baseDamage + this.stats.power + weapon.damageBonus) * falloff), this.player.direction);
+        this.damageCreature(
+          creature,
+          Math.round((data.baseDamage + this.stats.power + weapon.damageBonus) * falloff),
+          this.player.direction,
+          this.weapon,
+          this.weapon === "spear" ? 22 + weapon.tier * 3 : 16 + weapon.tier * 2,
+        );
         hits += 1;
         if (hits >= pierceLimit) break;
       }
     }
+  }
+
+  private useSignature(): void {
+    const signature = SIGNATURES[this.weapon];
+    const weapon = this.weapons[this.weapon];
+    if (this.abilityCooldown > 0 || this.stats.stamina < signature.staminaCost) return;
+    this.stats.stamina -= signature.staminaCost;
+    this.abilityCooldown = signature.cooldown * Math.max(0.72, 1 - (weapon.masteryLevel - 1) * 0.04);
+    this.signatureVisual = 0.42;
+    this.signatureKind = this.weapon;
+    this.player.attackVisual = 0;
+    this.sound.tone(this.weapon === "wand" ? 720 : 190, 0.28, "sawtooth", 0.035, this.weapon === "spear" ? 380 : 160);
+    this.addText(this.player.position, signature.name.toUpperCase(), "#fff1a6", 0.9, 0.82);
+
+    const data = WEAPON_DATA[this.weapon];
+    const baseDamage = data.baseDamage + this.stats.power + weapon.damageBonus;
+    if (this.weapon === "sword") {
+      for (const creature of [...this.creatures]) {
+        const targetDirection = normalize({ x: creature.position.x - this.player.position.x, y: creature.position.y - this.player.position.y });
+        if (distance(creature.position, this.player.position) <= 106 + creature.radius) {
+          this.damageCreature(creature, Math.round(baseDamage * 1.7), targetDirection, "sword", 68 + weapon.tier * 6);
+        }
+      }
+      this.burst(this.player.position, "#ffd967", 30, 175);
+      this.shake = 8;
+      return;
+    }
+
+    if (this.weapon === "spear") {
+      const start = { ...this.player.position };
+      const length = 148 + weapon.tier * 6;
+      for (const creature of [...this.creatures]) {
+        const relative = { x: creature.position.x - start.x, y: creature.position.y - start.y };
+        const along = relative.x * this.player.direction.x + relative.y * this.player.direction.y;
+        const sideways = Math.abs(relative.x * this.player.direction.y - relative.y * this.player.direction.x);
+        if (along >= 0 && along <= length && sideways <= 28 + creature.radius) {
+          this.damageCreature(creature, Math.round(baseDamage * 1.85), this.player.direction, "spear", 74 + weapon.tier * 7);
+        }
+      }
+      this.moveWithCollision(
+        this.player.position,
+        this.player.direction.x * length,
+        this.player.direction.y * length,
+        this.player.radius,
+      );
+      this.burst(this.player.position, "#8ee5b7", 22, 145);
+      this.shake = 7;
+      return;
+    }
+
+    const angle = Math.atan2(this.player.direction.y, this.player.direction.x);
+    for (const spread of [-0.24, 0, 0.24]) {
+      const direction = { x: Math.cos(angle + spread), y: Math.sin(angle + spread) };
+      this.projectiles.push({
+        id: this.entityId++,
+        weapon: "wand",
+        position: { x: this.player.position.x + direction.x * 20, y: this.player.position.y + direction.y * 20 },
+        velocity: { x: direction.x * 470, y: direction.y * 470 },
+        radius: 8,
+        damage: Math.round(baseDamage * 1.45),
+        life: 1.25,
+        color: "#d7b4ff",
+        pierce: 2,
+        poiseDamage: 34 + weapon.tier * 4,
+        hitIds: new Set(),
+      });
+    }
+    this.burst(this.player.position, "#b997ff", 28, 130);
   }
 
   private assistedCastDirection(): Vector {
@@ -407,14 +529,19 @@ export class PhantasyGame {
       else if (roll > 0.35) kind = "hornhare";
       const base = CREATURE_DATA[kind];
       const scale = 1 + Math.max(0, this.stats.level - 1) * 0.055;
+      const maxHealth = Math.round(base.health * scale);
+      const maxPoise = poiseForHealth(maxHealth, base.temperament);
       this.creatures.push({
         id: this.entityId++,
         kind,
         temperament: base.temperament,
         position,
         velocity: { x: 0, y: 0 },
-        health: Math.round(base.health * scale),
-        maxHealth: Math.round(base.health * scale),
+        health: maxHealth,
+        maxHealth,
+        poise: maxPoise,
+        maxPoise,
+        brokenTimer: 0,
         damage: Math.round(base.damage * (1 + (this.stats.level - 1) * 0.035)),
         speed: base.speed * (1 + Math.min(0.25, this.stats.level * 0.008)),
         xp: Math.round(base.xp * (1 + (this.stats.level - 1) * 0.04)),
@@ -433,6 +560,12 @@ export class PhantasyGame {
     for (const creature of this.creatures) {
       creature.hurtFlash = Math.max(0, creature.hurtFlash - delta * 6);
       creature.attackCooldown = Math.max(0, creature.attackCooldown - delta);
+      if (creature.brokenTimer > 0) {
+        creature.brokenTimer = Math.max(0, creature.brokenTimer - delta);
+        creature.velocity = { x: 0, y: 0 };
+        if (creature.brokenTimer === 0) creature.poise = creature.maxPoise;
+        continue;
+      }
       const playerDistance = distance(creature.position, this.player.position);
       if (creature.temperament === "aggressive" && playerDistance < 300) creature.aggro = true;
       if (creature.aggro && playerDistance < 470) {
@@ -468,7 +601,7 @@ export class PhantasyGame {
         if (projectile.hitIds.has(creature.id)) continue;
         if (distance(projectile.position, creature.position) <= projectile.radius + creature.radius) {
           projectile.hitIds.add(creature.id);
-          this.damageCreature(creature, projectile.damage, normalize(projectile.velocity));
+          this.damageCreature(creature, projectile.damage, normalize(projectile.velocity), projectile.weapon, projectile.poiseDamage);
           if (projectile.pierce > 0) projectile.pierce -= 1;
           else projectile.life = 0;
           break;
@@ -478,11 +611,13 @@ export class PhantasyGame {
     this.projectiles = this.projectiles.filter((projectile) => projectile.life > 0);
   }
 
-  private damageCreature(creature: Creature, baseDamage: number, direction: Vector): void {
+  private damageCreature(creature: Creature, baseDamage: number, direction: Vector, weapon: WeaponKind, poiseDamage: number): void {
     if (creature.health <= 0) return;
     const critical = this.rng.next() < 0.06 + this.stats.luck * 0.008;
-    const damage = Math.round(baseDamage * (critical ? 1.75 : 1) * (0.92 + this.rng.next() * 0.16));
+    const brokenBonus = creature.brokenTimer > 0 ? 1.32 : 1;
+    const damage = Math.round(baseDamage * (critical ? 1.75 : 1) * brokenBonus * (0.92 + this.rng.next() * 0.16));
     creature.health -= damage;
+    creature.poise = Math.max(0, creature.poise - poiseDamage * (critical ? 1.4 : 1));
     creature.aggro = true;
     creature.hurtFlash = 1;
     creature.position.x += direction.x * (critical ? 12 : 7);
@@ -491,7 +626,27 @@ export class PhantasyGame {
     this.burst(creature.position, critical ? "#ffda5a" : "#f4f0c6", critical ? 10 : 5, critical ? 110 : 70);
     this.shake = Math.max(this.shake, critical ? 7 : 3);
     this.sound.hit(critical);
+    this.gainMastery(weapon, creature.health <= 0 ? 8 : 2);
+    if (creature.poise <= 0 && creature.health > 0 && creature.brokenTimer <= 0) {
+      creature.brokenTimer = 1.35;
+      this.addText(creature.position, "◆ BREAK!", "#72e7ef", 0.85, 1.1);
+      this.burst(creature.position, "#63dce8", 16, 125);
+      this.shake = Math.max(this.shake, 8);
+      this.sound.tone(140, 0.2, "square", 0.025, 240);
+    }
     if (creature.health <= 0) this.defeatCreature(creature);
+  }
+
+  private gainMastery(kind: WeaponKind, amount: number): void {
+    const weapon = this.weapons[kind];
+    const previousLevel = weapon.masteryLevel;
+    weapon.masteryXp += amount;
+    weapon.masteryLevel = masteryLevelFromXp(weapon.masteryXp);
+    if (weapon.masteryLevel <= previousLevel) return;
+    weapon.damageBonus += (weapon.masteryLevel - previousLevel) * 2;
+    this.addText(this.player.position, `${WEAPON_DATA[kind].label} MASTERY ${weapon.masteryLevel}`, "#75e5ef", 1.2, 0.9);
+    this.burst(this.player.position, "#70e0eb", 20, 115);
+    this.sound.reward();
   }
 
   private defeatCreature(creature: Creature): void {
@@ -520,7 +675,7 @@ export class PhantasyGame {
   }
 
   private hurtPlayer(amount: number, direction: Vector): void {
-    if (this.player.hurtCooldown > 0) return;
+    if (this.player.hurtCooldown > 0 || this.player.dodgeTimer > 0) return;
     const damage = Math.max(1, amount - this.stats.armor);
     this.stats.health = Math.max(0, this.stats.health - damage);
     this.player.hurtCooldown = 0.78;
@@ -612,6 +767,7 @@ export class PhantasyGame {
     if (this.mode !== "dead") this.renderPlayer(ctx, time);
     for (const particle of this.particles) this.renderParticle(ctx, particle);
     for (const text of this.texts) this.renderText(ctx, text);
+    this.renderSignature(ctx);
     ctx.restore();
 
     if (this.mode === "paused") {
@@ -629,6 +785,38 @@ export class PhantasyGame {
       ctx.fillStyle = `rgba(255, 245, 184, ${this.flash * 0.18})`;
       ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     }
+  }
+
+  private renderSignature(ctx: CanvasRenderingContext2D): void {
+    if (this.signatureVisual <= 0) return;
+    const progress = 1 - this.signatureVisual / 0.42;
+    const alpha = Math.max(0, 1 - progress);
+    const { x, y } = this.player.position;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.globalAlpha = alpha;
+    ctx.lineWidth = 8 - progress * 4;
+    if (this.signatureKind === "sword") {
+      ctx.strokeStyle = "#ffe27a";
+      ctx.beginPath();
+      ctx.arc(0, 0, 42 + progress * 70, 0, Math.PI * 2);
+      ctx.stroke();
+    } else if (this.signatureKind === "spear") {
+      ctx.rotate(Math.atan2(this.player.direction.y, this.player.direction.x));
+      ctx.strokeStyle = "#8ff1bf";
+      ctx.beginPath();
+      ctx.moveTo(-110 + progress * 80, -12);
+      ctx.lineTo(30 + progress * 90, 0);
+      ctx.lineTo(-110 + progress * 80, 12);
+      ctx.stroke();
+    } else {
+      ctx.strokeStyle = "#c7a1ff";
+      for (let index = 0; index < 3; index += 1) {
+        ctx.rotate((Math.PI * 2) / 3);
+        ctx.strokeRect(20 + progress * 28, -5, 10, 10);
+      }
+    }
+    ctx.restore();
   }
 
   private renderWorld(ctx: CanvasRenderingContext2D, camera: Vector, time: number): void {
@@ -840,6 +1028,12 @@ export class PhantasyGame {
       ctx.fillRect(-13, creature.radius + 6, 26, 3);
       ctx.fillStyle = "#ff6876";
       ctx.fillRect(-13, creature.radius + 6, 26 * clamp(creature.health / creature.maxHealth, 0, 1), 3);
+    }
+    if (creature.poise < creature.maxPoise || creature.brokenTimer > 0) {
+      ctx.fillStyle = "#10202b";
+      ctx.fillRect(-13, creature.radius + 11, 26, 2);
+      ctx.fillStyle = creature.brokenTimer > 0 ? "#fff0a6" : "#62dce8";
+      ctx.fillRect(-13, creature.radius + 11, 26 * clamp(creature.poise / creature.maxPoise, 0, 1), 2);
     }
     ctx.restore();
   }

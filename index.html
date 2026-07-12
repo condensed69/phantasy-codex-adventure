@@ -42,6 +42,15 @@
             </div>
           </div>
 
+          <div id="combat-dock" class="combat-dock hidden" aria-label="Combat actions">
+            <button id="evade-action" class="combat-action evade-action" type="button">
+              <kbd>Shift</kbd><span><small>Evade</small><b id="evade-status">Ready</b></span>
+            </button>
+            <button id="signature-action" class="combat-action signature-action" type="button">
+              <kbd>F</kbd><span><small id="signature-weapon">Sunblade signature</small><b id="signature-name">Solar Cyclone</b><em id="signature-status">Ready</em></span>
+            </button>
+          </div>
+
           <div id="start-screen" class="screen start-screen">
             <div class="crest" aria-hidden="true">✦</div>
             <p class="kicker">THE CODEX STIRS</p>
@@ -52,7 +61,7 @@
               <button id="start-random" class="secondary-button" type="button"><span>Wild World</span><small>A fresh procedural seed</small></button>
             </div>
             <div class="controls-strip">
-              <span><kbd>WASD</kbd> Move</span><span><kbd>J</kbd> Attack</span><span><kbd>Shift</kbd> Sprint</span><span><kbd>1–3</kbd> Weapon</span>
+              <span><kbd>WASD</kbd> Move</span><span><kbd>J / Space</kbd> Attack</span><span><kbd>Shift</kbd> Evade</span><span><kbd>F</kbd> Signature</span><span><kbd>1–3</kbd> Weapon</span>
             </div>
           </div>
 
@@ -88,9 +97,9 @@
           <section class="panel-card current-card">
             <p class="eyebrow">Relic arsenal</p>
             <div class="weapon-list">
-              <button class="weapon-option active" data-weapon="sword"><kbd>1</kbd><span class="weapon-glyph sword">⚔</span><span><b>Sunblade</b><small>Fast sweeping arcs</small></span></button>
-              <button class="weapon-option" data-weapon="spear"><kbd>2</kbd><span class="weapon-glyph spear">↟</span><span><b>Thornlance</b><small>Reach and piercing</small></span></button>
-              <button class="weapon-option" data-weapon="wand"><kbd>3</kbd><span class="weapon-glyph wand">✦</span><span><b>Starwand</b><small>Ranged spell bolts</small></span></button>
+              <button class="weapon-option active" data-weapon="sword"><kbd>1</kbd><span class="weapon-glyph sword">⚔</span><span><b>Sunblade</b><small>Fast sweeping arcs</small><em data-mastery="sword">Mastery 1</em></span></button>
+              <button class="weapon-option" data-weapon="spear"><kbd>2</kbd><span class="weapon-glyph spear">↟</span><span><b>Thornlance</b><small>Reach and piercing</small><em data-mastery="spear">Mastery 1</em></span></button>
+              <button class="weapon-option" data-weapon="wand"><kbd>3</kbd><span class="weapon-glyph wand">✦</span><span><b>Starwand</b><small>Ranged spell bolts</small><em data-mastery="wand">Mastery 1</em></span></button>
             </div>
           </section>
 
@@ -106,7 +115,7 @@
         </aside>
       </section>
 
-      <footer><span>Made for brave little adventures.</span><span id="build-label">Codex build 0.1</span></footer>
+      <footer><span>Made for brave little adventures.</span><span id="build-label">Codex build 0.2</span></footer>
     </main>
     <script type="module" src="/src/main.ts"></script>
   </body>

@@ -2,6 +2,7 @@ import "./style.css";
 import { getLeaderboard, publishRun, startRun, type Score } from "./api";
 import { PhantasyGame, type GameOverSummary, type GameSnapshot } from "./game/game";
 import { levelProgress } from "./game/progression";
+import { masteryProgress, SIGNATURES } from "./game/combat";
 import { dailySeed } from "./game/rng";
 import type { UpgradeChoice, WeaponKind } from "./game/types";
 
@@ -30,6 +31,13 @@ const scoreStatus = element("score-status");
 const scoreForm = element<HTMLFormElement>("score-form");
 const playerNameInput = element<HTMLInputElement>("player-name");
 const soundButton = element<HTMLButtonElement>("sound-button");
+const combatDock = element("combat-dock");
+const evadeAction = element<HTMLButtonElement>("evade-action");
+const signatureAction = element<HTMLButtonElement>("signature-action");
+const evadeStatus = element("evade-status");
+const signatureWeapon = element("signature-weapon");
+const signatureName = element("signature-name");
+const signatureStatus = element("signature-status");
 const weaponNames: Record<WeaponKind, { glyph: string; label: string }> = {
   sword: { glyph: "⚔", label: "Sunblade" },
   spear: { glyph: "↟", label: "Thornlance" },
@@ -57,7 +65,20 @@ function updateHud(snapshot: GameSnapshot): void {
   levelText.textContent = `LV ${snapshot.stats.level}`;
   regionName.textContent = snapshot.region;
   const weapon = weaponNames[snapshot.weapon];
-  weaponChip.textContent = `${weapon.glyph} ${weapon.label} ${roman(snapshot.weapons[snapshot.weapon].tier)}`;
+  const weaponState = snapshot.weapons[snapshot.weapon];
+  weaponChip.textContent = `${weapon.glyph} ${weapon.label} T${roman(weaponState.tier)} · M${weaponState.masteryLevel}`;
+  const signature = SIGNATURES[snapshot.weapon];
+  signatureWeapon.textContent = `${weapon.label} signature`;
+  signatureName.textContent = signature.name;
+  signatureStatus.textContent = snapshot.abilityCooldown <= 0 ? "Ready" : `${snapshot.abilityCooldown.toFixed(1)}s`;
+  signatureAction.classList.toggle("cooling", snapshot.abilityCooldown > 0);
+  evadeStatus.textContent = snapshot.dodgeCooldown <= 0 ? "Ready" : `${snapshot.dodgeCooldown.toFixed(1)}s`;
+  evadeAction.classList.toggle("cooling", snapshot.dodgeCooldown > 0);
+  (Object.keys(snapshot.weapons) as WeaponKind[]).forEach((kind) => {
+    const mastery = masteryProgress(snapshot.weapons[kind].masteryXp);
+    const label = document.querySelector<HTMLElement>(`[data-mastery="${kind}"]`);
+    if (label) label.textContent = `Mastery ${mastery.level} · ${mastery.current}/${mastery.needed}`;
+  });
 }
 
 function updateWeapon(kind: WeaponKind): void {
@@ -155,6 +176,7 @@ async function beginRun(seed: number): Promise<void> {
     if (pressedButton) pressedButton.disabled = false;
   }
   hud.classList.remove("hidden");
+  combatDock.classList.remove("hidden");
   showOnly(null);
   game.start(seed, sessionId);
 }
@@ -165,6 +187,7 @@ element<HTMLButtonElement>("play-again").addEventListener("click", () => {
   finalRun = null;
   game.resetToIdle();
   hud.classList.add("hidden");
+  combatDock.classList.add("hidden");
   scoreForm.classList.remove("hidden");
   showOnly(startScreen);
 });
@@ -172,6 +195,9 @@ element<HTMLButtonElement>("play-again").addEventListener("click", () => {
 document.querySelectorAll<HTMLButtonElement>(".weapon-option").forEach((button) => {
   button.addEventListener("click", () => game.setWeapon(button.dataset.weapon as WeaponKind));
 });
+
+evadeAction.addEventListener("click", () => game.queueAction("shift"));
+signatureAction.addEventListener("click", () => game.queueAction("f"));
 
 function renderCharacterSheet(): void {
   const snapshot = latestSnapshot;
@@ -221,7 +247,8 @@ function renderCharacterSheet(): void {
     const name = document.createElement("span");
     name.textContent = weaponNames[kind].label;
     const detail = document.createElement("small");
-    detail.textContent = `Tier ${roman(state.tier)} · +${state.damageBonus} power`;
+    const mastery = masteryProgress(state.masteryXp);
+    detail.textContent = `Temper ${roman(state.tier)} · Mastery ${mastery.level} (${mastery.current}/${mastery.needed}) · +${state.damageBonus} power`;
     row.appendChild(glyph);
     row.appendChild(name);
     row.appendChild(detail);

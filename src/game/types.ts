@@ -26,6 +26,8 @@ export interface WeaponState {
   damageBonus: number;
   speedBonus: number;
   special: number;
+  masteryLevel: number;
+  masteryXp: number;
 }
 
 export interface Creature {
@@ -36,6 +38,9 @@ export interface Creature {
   velocity: Vector;
   health: number;
   maxHealth: number;
+  poise: number;
+  maxPoise: number;
+  brokenTimer: number;
   damage: number;
   speed: number;
   xp: number;
@@ -49,6 +54,7 @@ export interface Creature {
 
 export interface Projectile {
   id: number;
+  weapon: WeaponKind;
   position: Vector;
   velocity: Vector;
   radius: number;
@@ -56,6 +62,7 @@ export interface Projectile {
   life: number;
   color: string;
   pierce: number;
+  poiseDamage: number;
   hitIds: Set<number>;
 }
 
